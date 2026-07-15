@@ -28,6 +28,15 @@ make run
 
 Or open `AWWidgets.xcodeproj` in Xcode and Run (`⌘R`).
 
+## Install a release
+
+1. Download `AWWidgets-macos-universal.zip` from the latest [GitHub release](../../releases/latest).
+2. Unzip it and move `AWWidgets.app` to `/Applications`.
+3. Open the app once, then add **AW Categories** from Notification Center's **Edit Widgets** screen.
+4. The release is not notarized. On first launch, Control-click `AWWidgets.app`, choose **Open**, then confirm **Open**.
+
+Create a release by pushing a version tag such as `v0.1.0`; GitHub Actions builds and attaches the universal macOS archive.
+
 ### Add the widget
 
 1. Run `make run` to install **AWWidgets** in `/Applications` and register the extension. It runs in the background with no menu bar or Dock icon.
