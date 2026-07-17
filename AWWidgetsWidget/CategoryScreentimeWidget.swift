@@ -63,28 +63,37 @@ struct CategoryTimelineProvider: AppIntentTimelineProvider {
     func timeline(for configuration: CategoryWidgetConfiguration, in context: Context) async -> Timeline<CategoryEntry> {
         let range = configuration.timeRange.timeRange
         var snap = SharedStore.load(range: range)
+        let now = Date()
+        let safeEnd = now.addingTimeInterval(-300)
 
         // Widget may also refresh from AW if the companion app is not running.
         if snap == nil || (snap?.isStale ?? true) {
-            if let fresh = try? await AWClient().fetchCategoryDurations(timeRange: range) {
+            if let fresh = try? await AWClient().fetchCategoryDurations(timeRange: range, to: safeEnd, now: now) {
                 SharedStore.save(fresh.snapshot, daySettings: fresh.daySettings)
                 snap = fresh.snapshot
             }
-        } else if let cached = snap, cached.fetchedAt < Date().addingTimeInterval(-60) {
-            if let delta = try? await AWClient().fetchCategoryDurations(timeRange: range, from: cached.fetchedAt) {
+        } else if let cached = snap, cached.fetchedAt < safeEnd {
+            if let delta = try? await AWClient().fetchCategoryDurations(timeRange: range, from: cached.fetchedAt, to: safeEnd, now: now) {
                 let merged = cached.merging(with: delta.snapshot, fetchedAt: delta.snapshot.fetchedAt)
                 SharedStore.save(merged, daySettings: delta.daySettings)
                 snap = merged
             }
         }
 
+        var displaySnap = snap ?? .emptyWith(range: range)
+        if displaySnap.fetchedAt <= safeEnd {
+            if let deltaUncached = try? await AWClient().fetchCategoryDurations(timeRange: range, from: safeEnd, to: now, now: now) {
+                displaySnap = displaySnap.merging(with: deltaUncached.snapshot, fetchedAt: deltaUncached.snapshot.fetchedAt)
+            }
+        }
+
         let entry = CategoryEntry(
-            date: Date(),
-            snapshot: snap ?? .emptyWith(range: range),
+            date: now,
+            snapshot: displaySnap,
             configuration: configuration
         )
         // Reload on a modest cadence; companion app also triggers reloads.
-        let next = Calendar.current.date(byAdding: .minute, value: 5, to: Date()) ?? Date().addingTimeInterval(300)
+        let next = Calendar.current.date(byAdding: .minute, value: 5, to: now) ?? now.addingTimeInterval(300)
         return Timeline(entries: [entry], policy: .after(next))
     }
 }

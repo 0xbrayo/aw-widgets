@@ -30,6 +30,7 @@ struct AWClient: Sendable {
     func fetchCategoryDurations(
         timeRange: TimeRange,
         from explicitStart: Date? = nil,
+        to explicitEnd: Date? = nil,
         hostname: String? = nil,
         now: Date = Date()
     ) async throws -> (snapshot: CategorySnapshot, daySettings: DaySettings) {
@@ -47,8 +48,9 @@ struct AWClient: Sendable {
 
         let period = timeRange.period(now: now, daySettings: boundaries)
         let queryStart = explicitStart ?? period.start
+        let queryEnd = explicitEnd ?? period.end
         let isoStart = Self.iso8601.string(from: queryStart)
-        let isoEnd = Self.iso8601.string(from: period.end)
+        let isoEnd = Self.iso8601.string(from: queryEnd)
         let timeperiod = "\(isoStart)/\(isoEnd)"
 
         // categorize() expects list of (name, rule) tuples embedded as Query2 source
@@ -78,10 +80,10 @@ struct AWClient: Sendable {
         let results: [AnyCodableJSON] = try await post("/query/", body: body)
         guard let first = results.first else {
             let empty = CategorySnapshot(
-                fetchedAt: Date(),
+                fetchedAt: queryEnd,
                 timeRange: timeRange,
                 periodStart: period.start,
-                periodEnd: period.end,
+                periodEnd: queryEnd,
                 totalSeconds: 0,
                 categories: [],
                 serverHostname: host,
@@ -104,10 +106,10 @@ struct AWClient: Sendable {
 
         let total = categories.reduce(0.0) { $0 + $1.seconds }
         let snap = CategorySnapshot(
-            fetchedAt: Date(),
+            fetchedAt: queryEnd,
             timeRange: timeRange,
             periodStart: period.start,
-            periodEnd: period.end,
+            periodEnd: queryEnd,
             totalSeconds: total,
             categories: categories,
             serverHostname: host,
