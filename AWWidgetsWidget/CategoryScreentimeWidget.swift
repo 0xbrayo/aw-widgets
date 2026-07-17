@@ -70,6 +70,12 @@ struct CategoryTimelineProvider: AppIntentTimelineProvider {
                 SharedStore.save(fresh.snapshot, daySettings: fresh.daySettings)
                 snap = fresh.snapshot
             }
+        } else if let cached = snap, cached.fetchedAt < Date().addingTimeInterval(-60) {
+            if let delta = try? await AWClient().fetchCategoryDurations(timeRange: range, from: cached.fetchedAt) {
+                let merged = cached.merging(with: delta.snapshot, fetchedAt: delta.snapshot.fetchedAt)
+                SharedStore.save(merged, daySettings: delta.daySettings)
+                snap = merged
+            }
         }
 
         let entry = CategoryEntry(
@@ -78,7 +84,7 @@ struct CategoryTimelineProvider: AppIntentTimelineProvider {
             configuration: configuration
         )
         // Reload on a modest cadence; companion app also triggers reloads.
-        let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date().addingTimeInterval(900)
+        let next = Calendar.current.date(byAdding: .minute, value: 5, to: Date()) ?? Date().addingTimeInterval(300)
         return Timeline(entries: [entry], policy: .after(next))
     }
 }

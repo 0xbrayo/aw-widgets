@@ -29,6 +29,7 @@ struct AWClient: Sendable {
     /// Also returns day-boundary settings from the same `/settings` fetch.
     func fetchCategoryDurations(
         timeRange: TimeRange,
+        from explicitStart: Date? = nil,
         hostname: String? = nil,
         now: Date = Date()
     ) async throws -> (snapshot: CategorySnapshot, daySettings: DaySettings) {
@@ -45,7 +46,8 @@ struct AWClient: Sendable {
         }
 
         let period = timeRange.period(now: now, daySettings: boundaries)
-        let isoStart = Self.iso8601.string(from: period.start)
+        let queryStart = explicitStart ?? period.start
+        let isoStart = Self.iso8601.string(from: queryStart)
         let isoEnd = Self.iso8601.string(from: period.end)
         let timeperiod = "\(isoStart)/\(isoEnd)"
 

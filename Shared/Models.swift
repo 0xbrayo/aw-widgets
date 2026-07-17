@@ -202,7 +202,38 @@ struct CategorySnapshot: Codable, Sendable {
     )
 
     var isStale: Bool {
-        Date().timeIntervalSince(fetchedAt) > 30 * 60
+        if Date().timeIntervalSince(fetchedAt) > 4 * 3600 { return true }
+        let currentPeriod = timeRange.period(daySettings: SharedStore.daySettings)
+        if currentPeriod.start != self.periodStart { return true }
+        return false
+    }
+
+    func merging(with delta: CategorySnapshot, fetchedAt: Date) -> CategorySnapshot {
+        var mergedCategories = self.categories
+        for cat in delta.categories {
+            if let idx = mergedCategories.firstIndex(where: { $0.id == cat.id }) {
+                let existing = mergedCategories[idx]
+                mergedCategories[idx] = CategoryDuration(
+                    path: existing.path,
+                    seconds: existing.seconds + cat.seconds,
+                    colorHex: existing.colorHex ?? cat.colorHex
+                )
+            } else {
+                mergedCategories.append(cat)
+            }
+        }
+        mergedCategories.sort { $0.seconds > $1.seconds }
+        
+        return CategorySnapshot(
+            fetchedAt: fetchedAt,
+            timeRange: self.timeRange,
+            periodStart: self.periodStart,
+            periodEnd: delta.periodEnd,
+            totalSeconds: self.totalSeconds + delta.totalSeconds,
+            categories: mergedCategories,
+            serverHostname: delta.serverHostname ?? self.serverHostname,
+            errorMessage: delta.errorMessage ?? self.errorMessage
+        )
     }
 
     func withError(_ message: String?) -> CategorySnapshot {
