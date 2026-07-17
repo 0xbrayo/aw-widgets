@@ -37,12 +37,12 @@ struct AWClient: Sendable {
         let userSettings = try await fetchSettings()
         let classes = userSettings.classes
         let boundaries = userSettings.daySettings
-        let colorByPath: [String: String] = Dictionary(
-            uniqueKeysWithValues: classes.compactMap { c in
-                guard let hex = c.colorHex else { return nil }
-                return (c.name.joined(separator: "/"), hex)
+        var colorByPath = [String: String]()
+        for c in classes {
+            if let hex = c.colorHex {
+                colorByPath[c.name.joined(separator: "/")] = hex
             }
-        )
+        }
 
         let period = timeRange.period(now: now, daySettings: boundaries)
         let isoStart = Self.iso8601.string(from: period.start)
