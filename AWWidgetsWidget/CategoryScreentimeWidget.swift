@@ -46,6 +46,8 @@ struct CategoryTimelineProvider: AppIntentTimelineProvider {
     typealias Entry = CategoryEntry
     typealias Intent = CategoryWidgetConfiguration
 
+    private let refreshInterval: TimeInterval = 5 * 60
+
     func placeholder(in context: Context) -> CategoryEntry {
         CategoryEntry(
             date: Date(),
@@ -65,17 +67,18 @@ struct CategoryTimelineProvider: AppIntentTimelineProvider {
         var snap = SharedStore.load(range: range)
         let now = Date()
         let safeEnd = now.addingTimeInterval(-300)
+        let refreshBefore = safeEnd.addingTimeInterval(-refreshInterval)
 
         // Widget may also refresh from AW if the companion app is not running.
         if snap == nil || (snap?.isStale ?? true) {
             if let fresh = try? await AWClient().fetchCategoryDurations(timeRange: range, to: safeEnd, now: now) {
-                SharedStore.save(fresh.snapshot, daySettings: fresh.daySettings)
+                SharedStore.save(fresh.snapshot, daySettings: fresh.daySettings, reloadTimelines: false)
                 snap = fresh.snapshot
             }
-        } else if let cached = snap, cached.fetchedAt < safeEnd {
+        } else if let cached = snap, cached.fetchedAt < refreshBefore {
             if let delta = try? await AWClient().fetchCategoryDurations(timeRange: range, from: cached.fetchedAt, to: safeEnd, now: now) {
                 let merged = cached.merging(with: delta.snapshot, fetchedAt: delta.snapshot.fetchedAt)
-                SharedStore.save(merged, daySettings: delta.daySettings)
+                SharedStore.save(merged, daySettings: delta.daySettings, reloadTimelines: false)
                 snap = merged
             }
         }

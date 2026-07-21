@@ -44,7 +44,7 @@ enum SharedStore {
         return d
     }()
 
-    static func save(_ snapshot: CategorySnapshot, daySettings: DaySettings? = nil) {
+    static func save(_ snapshot: CategorySnapshot, daySettings: DaySettings? = nil, reloadTimelines: Bool = true) {
         do {
             let data = try encoder.encode(snapshot)
             try data.write(to: snapshotURL(for: snapshot.timeRange), options: .atomic)
@@ -53,7 +53,9 @@ enum SharedStore {
                 error: snapshot.errorMessage,
                 daySettings: daySettings ?? self.daySettings
             )
-            WidgetCenter.shared.reloadAllTimelines()
+            if reloadTimelines {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
         } catch {
             writeMeta(
                 selected: snapshot.timeRange,
